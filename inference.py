@@ -56,10 +56,11 @@ def call_llm_with_retry(client, model, messages, temperature, max_retries=3, bas
 
 def main():
     args = parse_args()
-    
     API_BASE_URL = os.getenv("API_BASE_URL", config.get("api", {}).get("base_url", "https://router.huggingface.co/v1"))
     MODEL_NAME = os.getenv("MODEL_NAME", args.model)
-    API_KEY = os.getenv("HF_TOKEN", "dummy-key")
+    API_KEY = os.getenv("HF_TOKEN")
+    if not API_KEY:
+        raise ValueError("HF_TOKEN environment variable is not set")
     
     client = OpenAI(
         base_url=API_BASE_URL,
