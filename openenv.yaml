@@ -1,0 +1,50 @@
+benchmark:
+  name: "AI Insurance Claim Validation & Fraud Detection"
+  description: "An environment to test AI agent capabilities in identifying fraud within insurance claims and predicting correct resolution pathways."
+  version: "1.0.0"
+  
+environment:
+  type: "http"
+  reset_endpoint: "/reset"
+  step_endpoint: "/step"
+  healthcheck_endpoint: "/state"
+  
+spaces:
+  observation:
+    type: "dict"
+    schema:
+      claim:
+        type: "dict"
+        description: "The details of the claim including patient and provider values."
+      difficulty:
+        type: "string"
+        description: "The difficulty level of the claim assessment"
+        
+  action:
+    type: "dict"
+    schema:
+      decision:
+        type: "string"
+        enum: ["APPROVE", "REJECT", "ESCALATE"]
+      fraud_score:
+        type: "float"
+        minimum: 0.0
+        maximum: 1.0
+      reasoning:
+        type: "string"
+
+  reward:
+    type: "float"
+    range: [0.0, 1.0]
+    description: "Evaluated based on correct decision, fraud score proximity to truth, and keyword hits in reasoning."
+
+tasks:
+  - id: "easy"
+    description: "Simple routine and clearly identifiable claim scenarios."
+    threshold: 0.7
+  - id: "medium"
+    description: "Moderately complex claims with minor ambiguity or realistic edge cases."
+    threshold: 0.6
+  - id: "hard"
+    description: "Highly contentious claims with complex hidden fraud indicators and large payout values."
+    threshold: 0.5

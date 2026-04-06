@@ -1,0 +1,13 @@
+api:
+  base_url: "https://api.openai.com/v1"
+  model: "gpt-4o-mini"
+  temperature: 0.0
+  max_retries: 3
+  
+environment:
+  max_steps: 5
+  default_task: "easy"
+  
+logging:
+  level: "INFO"
+  format: "[%(asctime)s] %(levelname)s: %(message)s"
