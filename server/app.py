@@ -105,3 +105,10 @@ def get_state():
         return JSONResponse(status_code=200, content={"status": "done"})
     except Exception as e:
         return JSONResponse(status_code=200, content={"error": str(e)})
+
+def main():
+    import uvicorn
+    uvicorn.run("server.app:app", host="0.0.0.0", port=7860)
+
+if __name__ == "__main__":
+    main()
