@@ -69,8 +69,15 @@ def main():
     
     sys.stdout.write(f"[START] task={args.task} env=insurance-fraud model={MODEL_NAME}\n")
     sys.stdout.flush()
-    
-    env = InsuranceEnvironment()
+
+    try:
+        env = InsuranceEnvironment()
+    except Exception as e:
+        logger.error(f"[EnvInitError]: {e}")
+        sys.stdout.write("[STEP] step=0 action=INVALID|0.00|null reward=0.00 done=true error=env_error\n")
+        sys.stdout.write("[END] success=false steps=0 rewards=\n")
+        sys.stdout.flush()
+        sys.exit(0)
     
     try:
         reset_info = env.reset(args.task)
