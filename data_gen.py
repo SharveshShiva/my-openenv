@@ -29,26 +29,45 @@ def generate_claims():
             difficulty = "medium"
         else:
             difficulty = "hard"
-            
-        is_fraud = random.random() > 0.7
-            
-        treatment_list = treatments[difficulty]
-        treatment_name, base_cost = random.choice(treatment_list)
+        
+        is_fraud = random.random() > 0.7 
+        
+        treatment_name, base_cost = random.choice(treatments[difficulty])
         
         if is_fraud:
             claim_amount = round(base_cost * random.uniform(1.8, 3.5), 2)
             fraud_score = random.uniform(0.7, 1.0)
             true_decision = "REJECT"
             fraud_indicators = ["inflated_cost"]
+
+            if difficulty == "hard" and random.random() > 0.5:
+                fraud_indicators.append("duplicate_billing")
+            if difficulty == "medium" and random.random() > 0.5:
+                fraud_indicators.append("unnecessary_treatment")
         else:
             claim_amount = round(base_cost * random.uniform(0.9, 1.1), 2)
             fraud_score = random.uniform(0.0, 0.3)
             true_decision = "APPROVE"
             fraud_indicators = []
-            
-        policy_duration = random.randint(12, 120)
-        history_claims = random.randint(0, 5)
 
+        if difficulty != "easy" and not is_fraud and random.random() > 0.8:
+            true_decision = "ESCALATE"
+            fraud_score = random.uniform(0.4, 0.6)
+            fraud_indicators = ["missing_documentation"]
+
+        if difficulty == "easy" and not is_fraud and random.random() > 0.8:
+            policy_duration = random.randint(1, 2)
+            true_decision = "REJECT"
+            fraud_score = random.uniform(0.1, 0.3)
+        else:
+            policy_duration = random.randint(12, 120)
+
+        history_claims = random.randint(0, 5)
+        if is_fraud and random.random() > 0.5:
+            history_claims = random.randint(10, 20)
+            if "excessive_history" not in fraud_indicators:
+                fraud_indicators.append("excessive_history")
+                
         claim = {
             "claim_id": f"CLM-{1000 + i}",
             "difficulty": difficulty,
@@ -58,12 +77,17 @@ def generate_claims():
             "hospital": get_noise(random.choice(hospitals), 0.1),
             "claim_amount": claim_amount,
             "policy_duration_months": policy_duration,
-            "documents_submitted": ["invoice", "medical_report"],
+            "documents_submitted": (
+                ["invoice", "medical_report"]
+                if "missing_documentation" not in fraud_indicators
+                else ["invoice"]
+            ),
             "history_claims_count": history_claims,
             "true_decision": true_decision,
             "fraud_score": round(fraud_score, 2),
             "fraud_indicators": fraud_indicators
         }
+
         claims.append(claim)
 
     base_dir = os.path.dirname(os.path.abspath(__file__))
@@ -75,6 +99,8 @@ def generate_claims():
     with open(file_path, "w") as f:
         json.dump(claims, f, indent=4)
 
+    print(f"✅ Claims generated at: {file_path}")
+
+
 if __name__ == "__main__":
     generate_claims()
-    print("Claims generated successfully!")
