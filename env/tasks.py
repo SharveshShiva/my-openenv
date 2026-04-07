@@ -9,9 +9,18 @@ class TaskManager:
         self.claims = self._load_data()
         
     def _load_data(self) -> List[Dict[str, Any]]:
-        full_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), self.data_path)
-        with open(full_path, "r") as f:
-            return json.load(f)
+    base_dir = os.path.dirname(os.path.dirname(__file__))
+    full_path = os.path.join(base_dir, self.data_path)
+
+    if not os.path.exists(full_path):
+        from data_gen import generate_claims
+        generate_claims()
+        
+    if not os.path.exists(full_path):
+        raise FileNotFoundError(f"Dataset not found even after generation: {full_path}")
+
+    with open(full_path, "r") as f:
+        return json.load(f)
             
     def get_task(self, difficulty: str = "easy") -> List[Dict[str, Any]]:
         """Returns all claims matching the given difficulty."""
