@@ -13,6 +13,9 @@ class TaskManager:
         full_path = os.path.join(base_dir, self.data_path)
 
         if not os.path.exists(full_path):
+            import sys
+            sys.path.append(os.path.dirname(os.path.dirname(__file__)))
+
             from data_gen import generate_claims
             generate_claims()
         
