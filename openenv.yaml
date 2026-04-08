@@ -35,16 +35,18 @@ spaces:
 
   reward:
     type: "float"
-    range: [0.0, 1.0]
+    range: [0.01, 0.99]
     description: "Evaluated based on correct decision, fraud score proximity to truth, and keyword hits in reasoning."
 
 tasks:
   - id: "easy"
     description: "Simple routine and clearly identifiable claim scenarios."
-    threshold: 0.7
+    threshold: 0.65
+
   - id: "medium"
     description: "Moderately complex claims with minor ambiguity or realistic edge cases."
-    threshold: 0.6
+    threshold: 0.58
+
   - id: "hard"
     description: "Highly contentious claims with complex hidden fraud indicators and large payout values."
-    threshold: 0.5
+    threshold: 0.52
