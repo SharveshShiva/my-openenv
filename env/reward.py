@@ -3,9 +3,9 @@ from .models import Action
 
 
 def match_fraud_indicators(reasoning: str, true_indicators: List[str]) -> float:
-    """Returns ratio (0.0 to 1.0) of matched fraud indicators."""
+    """Returns ratio (0.0 to <1.0) of matched fraud indicators."""
     if not true_indicators:
-        return 1.0
+        return 0.99  # avoid 1.0 (validator restriction)
 
     reasoning_lower = reasoning.lower()
     matches = 0
@@ -20,18 +20,23 @@ def match_fraud_indicators(reasoning: str, true_indicators: List[str]) -> float:
 
 def calculate_reward(action: Action, true_data: Dict[str, Any]) -> float:
     score = 0.0
+
+    # 1. Decision match (0.5)
     true_decision = true_data.get("true_decision", "")
     if action.decision == true_decision:
         score += 0.5
-    true_fraud_score = true_data.get("fraud_score", 0.0)
 
+    # 2. Fraud score match (0.2)
+    true_fraud_score = true_data.get("fraud_score", 0.0)
     try:
         fraud_diff = abs(float(action.fraud_score) - float(true_fraud_score))
         fraud_reward = max(0.0, 0.2 * (1.0 - fraud_diff))
     except Exception:
-        fraud_reward = 0.1 
+        fraud_reward = 0.1
 
     score += fraud_reward
+
+    # 3. Reasoning score (0.3)
     reasoning = str(action.reasoning).lower().strip()
     reasoning_score = 0.0
 
@@ -42,18 +47,11 @@ def calculate_reward(action: Action, true_data: Dict[str, Any]) -> float:
         reasoning_score -= 0.05
 
     else:
-
         reasoning_score += 0.1
 
         fraud_indicators = true_data.get("fraud_indicators", [])
-        spam_phrases = [
-            "fallback",
-            "error",
-            "unable",
-            "failed",
-            "json"
-        ]
 
+        spam_phrases = ["fallback", "error", "unable", "failed", "json"]
         if any(s in reasoning for s in spam_phrases):
             reasoning_score -= 0.1
         else:
@@ -61,12 +59,13 @@ def calculate_reward(action: Action, true_data: Dict[str, Any]) -> float:
                 good_keywords = ["normal", "valid", "routine", "consistent", "legitimate"]
                 matches = sum(1 for k in good_keywords if k in reasoning)
                 reasoning_score += min(0.2, 0.05 * matches)
-
             else:
                 ratio = match_fraud_indicators(reasoning, fraud_indicators)
                 reasoning_score += 0.2 * ratio
 
     score += reasoning_score
+
+    # FINAL SAFE CLAMP (STRICTLY BETWEEN 0 and 1)
     final_score = max(0.01, min(0.99, score))
 
     return float(final_score)
