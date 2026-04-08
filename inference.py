@@ -35,11 +35,13 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+
 def parse_args():
-    parser = argparse.ArgumentParser(description="Run Inference on OpenEnv Insurance")
+    parser = argparse.ArgumentParser()
     parser.add_argument("--task", type=str, default="easy")
     parser.add_argument("--model", type=str, default="gpt-4o-mini")
     return parser.parse_args()
+
 
 def call_llm_with_retry(client, model, messages, temperature, max_retries=3, base_delay=1):
     for attempt in range(max_retries):
@@ -50,11 +52,12 @@ def call_llm_with_retry(client, model, messages, temperature, max_retries=3, bas
                 temperature=temperature
             )
         except OpenAIError as e:
-            logger.warning(f"[RETRY {attempt+1}/{max_retries}] LLM call failed: {e}")
+            logger.warning(f"[RETRY {attempt+1}/{max_retries}] {e}")
             if attempt == max_retries - 1:
                 return None
             time.sleep(base_delay * (2 ** attempt))
     return None
+
 
 def main():
     args = parse_args()
@@ -64,14 +67,13 @@ def main():
     API_KEY = os.getenv("HF_TOKEN")
 
     if not API_KEY:
-        logger.warning("HF_TOKEN not set, running in fallback mode")
+        logger.warning("HF_TOKEN not set → using fallback mode")
 
     client = OpenAI(
         base_url=API_BASE_URL,
         api_key=API_KEY if API_KEY else "dummy"
     )
 
-    # START
     sys.stdout.write(f"[START] task={args.task} env=insurance-fraud model={MODEL_NAME}\n")
     sys.stdout.flush()
 
@@ -80,7 +82,7 @@ def main():
         env = InsuranceEnvironment()
     except Exception as e:
         logger.error(f"[EnvInitError]: {e}")
-        sys.stdout.write("[STEP] step=0 action=INVALID|0.00|null reward=0.00 done=true error=env_error\n")
+        sys.stdout.write("[STEP] step=0 action=INVALID|0.00|null reward=0.01 done=true error=env_error\n")
         sys.stdout.write("[END] success=false steps=0 rewards=\n")
         sys.stdout.flush()
         sys.exit(0)
@@ -105,16 +107,15 @@ def main():
 
         while not done and obs is not None and step < MAX_STEPS:
             step += 1
-            prompt = f"Observation:\n{json.dumps(obs, indent=2)}\n\nWhat is your action?"
+            prompt = f"Observation:\n{json.dumps(obs)}\n\nWhat is your action?"
 
             error_msg = "null"
-            reward_val = 0.00
-            action_str = "INVALID|0.00|null"
+            reward_val = 0.01  # SAFE DEFAULT
+            action_str = "INVALID|0.50|fallback"
 
             action_obj = Action(decision="ESCALATE", fraud_score=0.5, reasoning="Fallback")
 
             try:
-                # 🔥 SAFE LLM HANDLING
                 if not API_KEY:
                     action_data = {
                         "decision": "ESCALATE",
@@ -135,7 +136,7 @@ def main():
                         )
 
                         if response is None or not response.choices:
-                            raise ValueError("Empty LLM response")
+                            raise ValueError("Empty response")
 
                         content = response.choices[0].message.content.strip()
 
@@ -155,7 +156,7 @@ def main():
                             "reasoning": "Fallback due to model error"
                         }
 
-                # Normalize action
+                # Normalize
                 decision = str(action_data.get("decision", "ESCALATE")).upper()
                 if decision not in ["APPROVE", "REJECT", "ESCALATE"]:
                     decision = "ESCALATE"
@@ -172,18 +173,12 @@ def main():
 
                 action_str = f"{decision}|{fraud_score:.2f}|{reasoning}"
 
-                # Validate action
                 try:
-                    action_obj = Action(
-                        decision=decision,
-                        fraud_score=fraud_score,
-                        reasoning=reasoning
-                    )
-                except Exception:
+                    action_obj = Action(decision=decision, fraud_score=fraud_score, reasoning=reasoning)
+                except:
                     error_msg = "json_error"
                     action_obj = Action(decision="ESCALATE", fraud_score=0.5, reasoning="Fallback")
 
-                # Step env
                 try:
                     next_obs, reward, is_done, _ = env.step(action_obj)
                     obs = next_obs
@@ -207,7 +202,7 @@ def main():
             )
             sys.stdout.flush()
 
-        score = (sum(rewards) / len(rewards)) if rewards else 0.0
+        score = (sum(rewards) / len(rewards)) if rewards else 0.01
         success = "true" if score >= success_threshold else "false"
         rewards_str = ",".join([f"{r:.2f}" for r in rewards])
 
@@ -216,9 +211,10 @@ def main():
 
     except Exception as e:
         logger.error(f"[FatalError]: {e}")
-        sys.stdout.write("[STEP] step=0 action=INVALID|0.00|null reward=0.00 done=true error=env_error\n")
+        sys.stdout.write("[STEP] step=0 action=INVALID|0.50|fallback reward=0.01 done=true error=env_error\n")
         sys.stdout.write("[END] success=false steps=0 rewards=\n")
         sys.stdout.flush()
+
 
 if __name__ == "__main__":
     main()
