@@ -187,7 +187,7 @@ def main():
                 try:
                     next_obs, reward, is_done, _ = env.step(action_obj)
                     obs = next_obs
-                    reward_val = max(0.0, min(1.0, float(reward))) if reward else 0.0
+                    reward_val = max(0.01, min(0.99, float(reward))) if reward is not None else 0.01
                     done = is_done
                     rewards.append(reward_val)
                 except Exception as e:
